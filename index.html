@@ -342,15 +342,32 @@
             });
         }
 
-        function getAllFields(obj, prefix = '') {
+        function getAllFields(obj, prefix = '', maxDepth = 3, currentDepth = 0) {
             let fields = [];
+            
+            if (currentDepth >= maxDepth) return fields;
             
             for (let key in obj) {
                 const fullKey = prefix ? `${prefix}.${key}` : key;
+                const value = obj[key];
                 
-                if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-                    // Nested object - get fields from it too
-                    fields = fields.concat(getAllFields(obj[key], fullKey));
+                if (Array.isArray(value) && value.length > 0) {
+                    // For arrays, add the array itself
+                    fields.push(fullKey);
+                    
+                    // Also add specific array element fields if they're objects
+                    if (typeof value[0] === 'object' && value[0] !== null) {
+                        // Add fields for first array element
+                        const arrayFields = getAllFields(value[0], `${fullKey}[0]`, maxDepth, currentDepth + 1);
+                        fields = fields.concat(arrayFields);
+                    }
+                } else if (value && typeof value === 'object' && value !== null) {
+                    // Add the object itself
+                    fields.push(fullKey);
+                    
+                    // Nested object - get fields from it too (but limit depth)
+                    const nestedFields = getAllFields(value, fullKey, maxDepth, currentDepth + 1);
+                    fields = fields.concat(nestedFields);
                 } else {
                     // Simple field
                     fields.push(fullKey);
@@ -374,13 +391,50 @@
             
             for (let key of keys) {
                 if (value && typeof value === 'object') {
-                    value = value[key];
+                    // Handle array notation like categories[0]
+                    if (key.includes('[') && key.includes(']')) {
+                        const arrayKey = key.split('[')[0];
+                        const index = parseInt(key.split('[')[1].split(']')[0]);
+                        value = value[arrayKey] && value[arrayKey][index];
+                    } else {
+                        value = value[key];
+                    }
                 } else {
                     return '';
                 }
             }
             
-            return value !== null && value !== undefined ? value.toString() : '';
+            // Handle different value types
+            if (value === null || value === undefined) {
+                return '';
+            } else if (Array.isArray(value)) {
+                // For arrays, try to extract meaningful data
+                if (value.length === 0) return '';
+                if (typeof value[0] === 'object') {
+                    // If it's an array of objects, try to find a meaningful field
+                    const firstObj = value[0];
+                    if (firstObj.name) return firstObj.name;
+                    if (firstObj.categoryName) return firstObj.categoryName;
+                    if (firstObj.title) return firstObj.title;
+                    if (firstObj.value) return firstObj.value;
+                    // Otherwise return a summary
+                    return `${value.length} items`;
+                } else {
+                    // Array of simple values
+                    return value.join(', ');
+                }
+            } else if (typeof value === 'object') {
+                // For objects, try to extract meaningful data
+                if (value.name) return value.name;
+                if (value.categoryName) return value.categoryName;
+                if (value.title) return value.title;
+                if (value.value) return value.value;
+                if (value.displayName) return value.displayName;
+                // Otherwise return object summary
+                return `[Object with ${Object.keys(value).length} properties]`;
+            } else {
+                return value.toString();
+            }
         }
 
         function selectAllFields() {
