@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Extractor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 8px 8px 8px 0;
+            transition: transform 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .status {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .preview {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e1e5e9;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+        }
+
+        .preview table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .preview th,
+        .preview td {
+            padding: 6px 10px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .preview th {
+            background: #f1f3f5;
+            font-weight: 600;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input {
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-item label {
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+            
+            .checkbox-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 JSON Extractor</h1>
+            <p>Simple tool to extract and convert JSON data to CSV</p>
+        </div>
+
+        <div class="content">
+            <!-- Step 1: JSON Input -->
+            <div class="section">
+                <h3>Step 1: Paste Your JSON Data</h3>
+                <textarea id="jsonInput" placeholder="Paste your JSON data here..."></textarea>
+                <button class="btn" onclick="parseJSON()">Parse JSON</button>
+                <button class="btn btn-secondary" onclick="clearAll()">Clear</button>
+                <div id="parseStatus" class="hidden"></div>
+            </div>
+
+            <!-- Step 2: Field Selection -->
+            <div id="fieldSection" class="section hidden">
+                <h3>Step 2: Select Fields to Extract</h3>
+                <div id="fieldCheckboxes" class="checkbox-grid"></div>
+                <button class="btn" onclick="selectAllFields()">Select All</button>
+                <button class="btn btn-secondary" onclick="selectNoneFields()">Select None</button>
+                <button class="btn" onclick="generatePreview()">Preview Data</button>
+            </div>
+
+            <!-- Step 3: Preview and Export -->
+            <div id="exportSection" class="section hidden">
+                <h3>Step 3: Preview and Export</h3>
+                <div id="dataPreview" class="preview"></div>
+                <button class="btn" onclick="downloadCSV()">📊 Download CSV</button>
+                <button class="btn" onclick="downloadJSON()">📄 Download JSON</button>
+                <button class="btn" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+                <div id="exportStatus" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let parsedData = null;
+        let extractedData = [];
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${type}`;
+            element.classList.remove('hidden');
+        }
+
+        function hideElement(elementId) {
+            document.getElementById(elementId).classList.add('hidden');
+        }
+
+        function showElement(elementId) {
+            document.getElementById(elementId).classList.remove('hidden');
+        }
+
+        function parseJSON() {
+            const input = document.getElementById('jsonInput').value.trim();
+            
+            if (!input) {
+                showStatus('parseStatus', 'Please paste some JSON data first.', 'error');
+                return;
+            }
+
+            try {
+                parsedData = JSON.parse(input);
+                
+                // Find array data in the JSON
+                let dataArray = findArrayInJSON(parsedData);
+                
+                if (dataArray && dataArray.length > 0) {
+                    showStatus('parseStatus', `✅ Found ${dataArray.length} records! Select fields below.`, 'success');
+                    setupFieldSelection(dataArray[0]);
+                    showElement('fieldSection');
+                } else {
+                    showStatus('parseStatus', '⚠️ No array data found. Make sure your JSON contains an array of objects.', 'error');
+                }
+
+            } catch (error) {
+                showStatus('parseStatus', `❌ Invalid JSON: ${error.message}`, 'error');
+                hideElement('fieldSection');
+                hideElement('exportSection');
+            }
+        }
+
+        function findArrayInJSON(obj) {
+            // Look for arrays in common locations
+            if (Array.isArray(obj)) {
+                return obj;
+            }
+            
+            if (obj && typeof obj === 'object') {
+                // Check common paths for biomarker data
+                if (obj.data && obj.data.biomarkerResultsRecord) {
+                    return obj.data.biomarkerResultsRecord;
+                }
+                if (obj.biomarkerResultsRecord) {
+                    return obj.biomarkerResultsRecord;
+                }
+                
+                // Look for any array in the object
+                for (let key in obj) {
+                    if (Array.isArray(obj[key]) && obj[key].length > 0) {
+                        return obj[key];
+                    }
+                }
+                
+                // Recursively search nested objects
+                for (let key in obj) {
+                    if (obj[key] && typeof obj[key] === 'object') {
+                        let result = findArrayInJSON(obj[key]);
+                        if (result) return result;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        function setupFieldSelection(sampleObject) {
+            const container = document.getElementById('fieldCheckboxes');
+            container.innerHTML = '';
+
+            // Get all possible fields from the sample object
+            const fields = getAllFields(sampleObject);
+            
+            fields.forEach(field => {
+                const div = document.createElement('div');
+                div.className = 'checkbox-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `field_${field}`;
+                checkbox.value = field;
+                checkbox.checked = true; // Select all by default
+                
+                const label = document.createElement('label');
+                label.htmlFor = `field_${field}`;
+                label.textContent = formatFieldName(field);
+                
+                div.appendChild(checkbox);
+                div.appendChild(label);
+                container.appendChild(div);
+            });
+        }
+
+        function getAllFields(obj, prefix = '') {
+            let fields = [];
+            
+            for (let key in obj) {
+                const fullKey = prefix ? `${prefix}.${key}` : key;
+                
+                if (obj[key] && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+                    // Nested object - get fields from it too
+                    fields = fields.concat(getAllFields(obj[key], fullKey));
+                } else {
+                    // Simple field
+                    fields.push(fullKey);
+                }
+            }
+            
+            return fields;
+        }
+
+        function formatFieldName(field) {
+            return field
+                .split('.')
+                .map(part => part.replace(/([A-Z])/g, ' $1').trim())
+                .join(' → ')
+                .replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function getFieldValue(obj, fieldPath) {
+            const keys = fieldPath.split('.');
+            let value = obj;
+            
+            for (let key of keys) {
+                if (value && typeof value === 'object') {
+                    value = value[key];
+                } else {
+                    return '';
+                }
+            }
+            
+            return value !== null && value !== undefined ? value.toString() : '';
+        }
+
+        function selectAllFields() {
+            const checkboxes = document.querySelectorAll('#fieldCheckboxes input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = true);
+        }
+
+        function selectNoneFields() {
+            const checkboxes = document.querySelectorAll('#fieldCheckboxes input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+        }
+
+        function generatePreview() {
+            const selectedFields = Array.from(document.querySelectorAll('#fieldCheckboxes input[type="checkbox"]:checked'))
+                .map(cb => cb.value);
+
+            if (selectedFields.length === 0) {
+                showStatus('exportStatus', 'Please select at least one field.', 'error');
+                return;
+            }
+
+            const dataArray = findArrayInJSON(parsedData);
+            extractedData = dataArray.map(item => {
+                const row = {};
+                selectedFields.forEach(field => {
+                    row[formatFieldName(field)] = getFieldValue(item, field);
+                });
+                return row;
+            });
+
+            displayPreview(extractedData);
+            showElement('exportSection');
+        }
+
+        function displayPreview(data) {
+            const preview = document.getElementById('dataPreview');
+            
+            if (data.length === 0) {
+                preview.innerHTML = '<p>No data to preview</p>';
+                return;
+            }
+
+            const headers = Object.keys(data[0]);
+            
+            let html = `<p><strong>Preview (first 5 rows of ${data.length} total)</strong></p>`;
+            html += '<table>';
+            html += '<thead><tr>';
+            headers.forEach(header => {
+                html += `<th>${header}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            data.slice(0, 5).forEach(row => {
+                html += '<tr>';
+                headers.forEach(header => {
+                    const value = row[header] || '';
+                    html += `<td>${value.length > 50 ? value.substring(0, 50) + '...' : value}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            preview.innerHTML = html;
+        }
+
+        function downloadCSV() {
+            if (extractedData.length === 0) {
+                showStatus('exportStatus', 'No data to export. Please generate preview first.', 'error');
+                return;
+            }
+
+            const headers = Object.keys(extractedData[0]);
+            let csv = headers.join(',') + '\n';
+            
+            extractedData.forEach(row => {
+                const values = headers.map(header => {
+                    const value = row[header] || '';
+                    return `"${value.toString().replace(/"/g, '""')}"`;
+                });
+                csv += values.join(',') + '\n';
+            });
+
+            const success = downloadFile(csv, 'extracted-data.csv', 'text/csv');
+            
+            if (success) {
+                showStatus('exportStatus', '✅ CSV file downloaded!', 'success');
+            } else {
+                // Fallback: show data for manual copy
+                showCSVFallback(csv);
+            }
+        }
+
+        function showCSVFallback(csvContent) {
+            const fallbackDiv = document.createElement('div');
+            fallbackDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 1000;
+                max-width: 80%;
+                max-height: 80%;
+                overflow: auto;
+            `;
+            
+            fallbackDiv.innerHTML = `
+                <h3>Download Failed - Manual Copy</h3>
+                <p>Please copy this CSV data and save it as a .csv file:</p>
+                <textarea style="width: 100%; height: 200px; font-family: monospace; font-size: 12px;">${csvContent}</textarea>
+                <br><br>
+                <button onclick="this.parentElement.remove()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+                <button onclick="navigator.clipboard.writeText('${csvContent.replace(/'/g, "\\'")}'); alert('Copied to clipboard!')" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">Copy to Clipboard</button>
+            `;
+            
+            document.body.appendChild(fallbackDiv);
+            showStatus('exportStatus', '⚠️ Download blocked. Using manual copy method.', 'info');
+        }
+
+        function downloadJSON() {
+            if (extractedData.length === 0) {
+                showStatus('exportStatus', 'No data to export. Please generate preview first.', 'error');
+                return;
+            }
+
+            const jsonStr = JSON.stringify(extractedData, null, 2);
+            downloadFile(jsonStr, 'extracted-data.json', 'application/json');
+            showStatus('exportStatus', '✅ JSON file downloaded!', 'success');
+        }
+
+        function copyToClipboard() {
+            if (extractedData.length === 0) {
+                showStatus('exportStatus', 'No data to copy. Please generate preview first.', 'error');
+                return;
+            }
+
+            const headers = Object.keys(extractedData[0]);
+            let text = headers.join('\t') + '\n';
+            extractedData.forEach(row => {
+                const values = headers.map(header => row[header] || '');
+                text += values.join('\t') + '\n';
+            });
+
+            navigator.clipboard.writeText(text).then(() => {
+                showStatus('exportStatus', '✅ Data copied to clipboard!', 'success');
+            }).catch(() => {
+                showStatus('exportStatus', '❌ Failed to copy to clipboard', 'error');
+            });
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            try {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = filename;
+                link.style.display = 'none';
+                
+                // Add to body, click, then remove
+                document.body.appendChild(link);
+                link.click();
+                
+                // Clean up after a short delay
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                return true;
+            } catch (error) {
+                console.error('Download failed:', error);
+                return false;
+            }
+        }
+
+        function clearAll() {
+            document.getElementById('jsonInput').value = '';
+            parsedData = null;
+            extractedData = [];
+            hideElement('fieldSection');
+            hideElement('exportSection');
+            hideElement('parseStatus');
+            hideElement('exportStatus');
+        }
+    </script>
+</body>
+</html>
